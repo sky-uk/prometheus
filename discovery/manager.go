@@ -279,6 +279,10 @@ func (m *Manager) providersFromConfig(cfg sd_config.ServiceDiscoveryConfig) map[
 		}
 		app("triton", i, t)
 	}
+
+	for i, c := range cfg.VSphereSDConfigs {
+		app("ec2", i, ec2.NewDiscovery(c, log.With(m.logger, "discovery", "vsphere")))
+	}
 	if len(cfg.StaticConfigs) > 0 {
 		app("static", 0, NewStaticProvider(cfg.StaticConfigs))
 	}

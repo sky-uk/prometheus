@@ -26,6 +26,7 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/discovery/triton"
 	"github.com/prometheus/prometheus/discovery/zookeeper"
+	"github.com/sky-uk/prometheus/discovery/vsphere"
 
 	yaml_util "github.com/prometheus/prometheus/util/yaml"
 )
@@ -58,6 +59,8 @@ type ServiceDiscoveryConfig struct {
 	AzureSDConfigs []*azure.SDConfig `yaml:"azure_sd_configs,omitempty"`
 	// List of Triton service discovery configurations.
 	TritonSDConfigs []*triton.SDConfig `yaml:"triton_sd_configs,omitempty"`
+	// List of vSphere service discovery configurations.
+	VSphereSDConfigs []*vsphere.SDConfig `yaml:"vsphere_sd_configs,omitempty"`
 
 	// Catches all undefined fields and must be empty after parsing.
 	XXX map[string]interface{} `yaml:",inline"`
