@@ -130,7 +130,7 @@ func (d *Discovery) Client() (*VSphereClient, error) {
 	}
 
 	//log.Printf("[INFO] VMWare vSphere Client configured for URL: %s", c.VSphereServer)
-	level.Info((d.logger).Log("msg", "VMWare vSphere Client configured for URL", "info",d.VSphereServer))
+	level.Info(d.logger).Log("msg", "VMWare vSphere Client configured for URL", "info",d.VSphereServer)
 
 	// Skip the rest of this function if we are not setting up the tags client. This is if
 	//TODO Validate endpoint version
@@ -141,8 +141,8 @@ func (d *Discovery) Client() (*VSphereClient, error) {
 
 	// Otherwise, connect to the CIS REST API for tagging.
 	//log.Printf("[INFO] Logging in to CIS REST API endpoint on %s", d.VSphereServer)
-	level.Info((d.logger).Log("msg", "Logging in toCIS REST login", "info",d.VSphereServer ))
-	client.tagsClient = tags.NewClient(u, c.InsecureFlag, "")
+	level.Info(d.logger).Log("msg", "Logging in toCIS REST login", "info",d.VSphereServer )
+	client.tagsClient = tags.NewClient(u, d.InsecureFlag, "")
 	tctx, tcancel := context.WithTimeout(context.Background(), defaultAPITimeout)
 	defer tcancel()
 	if err := client.tagsClient.Login(tctx); err != nil {
@@ -150,7 +150,7 @@ func (d *Discovery) Client() (*VSphereClient, error) {
 	}
 	// Done
 	//log.Println("[INFO] CIS REST login successful")
-	level.Info((d.logger).Log("msg", "CIS REST login successful", "info"))
+	level.Info(d.logger).Log("msg", "CIS REST login successful", "info")
 
 	return client, nil
 }
@@ -159,7 +159,7 @@ func (d *Discovery) Client() (*VSphereClient, error) {
 func (d *Discovery) vmClient() (*govmomi.Client, error) {
 
 
-	u, err := url.Parse("https://" + c.VSphereServer + "/sdk")
+	u, err := url.Parse("https://" + d.VSphereServer + "/sdk")
 	if err != nil {
 		return nil, fmt.Errorf("Error parse url: %s", err)
 	}
@@ -174,7 +174,7 @@ func (d *Discovery) vmClient() (*govmomi.Client, error) {
 	// Set up the VIM/govmomi client connection.
 	vctx, vcancel := context.WithTimeout(context.Background(), defaultAPITimeout)
 	defer vcancel()
-	client, err := govmomi.NewClient(vctx, u, c.InsecureFlag)
+	client, err := govmomi.NewClient(vctx, u, d.InsecureFlag)
 	if err != nil {
 		return nil, fmt.Errorf("Error setting up VM client: %s", err)
 	}
@@ -198,7 +198,7 @@ func (d *Discovery) getVMlist() ([]mo.VirtualMachine, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := view.NewManager(d.Client)
+	m := view.NewManager(vmclient.Client)
 	v, err := m.CreateContainerView(ctx, vmclient.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
 	if err != nil {
 		return nil, err

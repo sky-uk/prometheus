@@ -26,7 +26,7 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/discovery/triton"
 	"github.com/prometheus/prometheus/discovery/zookeeper"
-	"github.com/sky-uk/prometheus/discovery/vsphere"
+	"../vsphere"
 
 	yaml_util "github.com/prometheus/prometheus/util/yaml"
 )
