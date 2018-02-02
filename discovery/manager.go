@@ -36,6 +36,7 @@ import (
 	"github.com/prometheus/prometheus/discovery/openstack"
 	"github.com/prometheus/prometheus/discovery/triton"
 	"github.com/prometheus/prometheus/discovery/zookeeper"
+	"./vsphere"
 )
 
 // Discoverer provides information about target groups. It maintains a set
@@ -281,7 +282,7 @@ func (m *Manager) providersFromConfig(cfg sd_config.ServiceDiscoveryConfig) map[
 	}
 
 	for i, c := range cfg.VSphereSDConfigs {
-		app("ec2", i, ec2.NewDiscovery(c, log.With(m.logger, "discovery", "vsphere")))
+		app("vsphere", i, vsphere.NewDiscovery(c, log.With(m.logger, "discovery", "vsphere")))
 	}
 	if len(cfg.StaticConfigs) > 0 {
 		app("static", 0, NewStaticProvider(cfg.StaticConfigs))
