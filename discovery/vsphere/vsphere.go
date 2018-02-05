@@ -290,6 +290,7 @@ func (d *Discovery) refresh() (tg *targetgroup.Group, err error) {
 			tagName := strutil.SanitizeLabelName(vmtag.Name)
 			if strings.HasPrefix(tagName, "__meta_") {
 				labels[model.LabelName(tagName)] = model.LabelValue(vmtag.Description)
+				labels[model.LabelName(model.AddressLabel)] = model.LabelValue(vm.Summary.Guest.IpAddress)
 
 			}
 		}
