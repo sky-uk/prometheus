@@ -18,6 +18,7 @@ import (
 	"strings"
 	"github.com/prometheus/prometheus/util/strutil"
 	"github.com/prometheus/common/model"
+	yaml_util "github.com/prometheus/prometheus/util/yaml"
 )
 
 //TODO Remove hardcoded value
@@ -54,7 +55,16 @@ type SDConfig struct {
 	Debug         bool			`yaml:"debug,omitempty"`
 	DebugPath     string		`yaml:"debug_outpath,omitempty"`
 	DebugPathRun  string	`yaml:"debug_runpath,omitempty"`
+	XXX map[string]interface{} `yaml:",inline"`
 }
+
+var (
+
+	// DefaultSDConfig is the default DNS SD configuration.
+	DefaultSDConfig = SDConfig{
+		InsecureFlag: true,
+	}
+)
 
 func NewDiscovery(conf *SDConfig, logger log.Logger) *Discovery {
 	return &Discovery{
@@ -62,8 +72,35 @@ func NewDiscovery(conf *SDConfig, logger log.Logger) *Discovery {
 		User: conf.User,
 		Password: conf.Password,
 		InsecureFlag: conf.InsecureFlag,
+		//TODO remove hardcoded value
+		interval: 30 * time.Second,
+		logger: logger,
 	}
 
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (c *SDConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	*c = DefaultSDConfig
+	type plain SDConfig
+	err := unmarshal((*plain)(c))
+	if err != nil {
+		return err
+	}
+	if err := yaml_util.CheckOverflow(c.XXX, "vsphere_sd_config"); err != nil {
+		return err
+	}
+	if c.VSphereServer == "" {
+		return fmt.Errorf("vsphere-sd: VSphereServer is required")
+	}
+	if c.Password == "" {
+		return fmt.Errorf("vsphere-sd password is required")
+	}
+	if c.User == "" {
+		return fmt.Errorf("vsphere-sd user is required")
+
+	}
+	return nil
 }
 
 func (d *Discovery) EnableDebug() error {
