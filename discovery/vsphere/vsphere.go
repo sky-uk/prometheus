@@ -20,7 +20,6 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/common/model"
 	yaml_util "github.com/prometheus/prometheus/util/yaml"
-	"github.com/davecgh/go-spew/spew"
 )
 
 //TODO Remove hardcoded value
