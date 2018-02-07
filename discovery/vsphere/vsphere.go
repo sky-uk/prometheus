@@ -1,24 +1,26 @@
 package vsphere
 
 import (
-	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"fmt"
 	"net/url"
 	"time"
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/go-kit/kit/log/level"
 	"github.com/go-kit/kit/log"
-	"path/filepath"
-	"os"
 	"github.com/vmware/govmomi/vim25/debug"
-	"fmt"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/vic/pkg/vsphere/tags"
 	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
-	"strings"
 	"github.com/prometheus/prometheus/util/strutil"
+	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/common/model"
 	yaml_util "github.com/prometheus/prometheus/util/yaml"
+	"github.com/davecgh/go-spew/spew"
 )
 
 //TODO Remove hardcoded value
@@ -166,7 +168,6 @@ func (d *Discovery) Client() (*VSphereClient, error) {
 		return nil, fmt.Errorf("Error setting up client: %s", err)
 	}
 
-	//log.Printf("[INFO] VMWare vSphere Client configured for URL: %s", c.VSphereServer)
 	level.Info(d.logger).Log("msg", "VMWare vSphere Client configured for URL", "info",d.VSphereServer)
 
 	// Skip the rest of this function if we are not setting up the tags client. This is if
@@ -177,7 +178,6 @@ func (d *Discovery) Client() (*VSphereClient, error) {
 	//	}
 
 	// Otherwise, connect to the CIS REST API for tagging.
-	//log.Printf("[INFO] Logging in to CIS REST API endpoint on %s", d.VSphereServer)
 	level.Info(d.logger).Log("msg", "Logging in toCIS REST login", "info",d.VSphereServer )
 	client.tagsClient = tags.NewClient(u, d.InsecureFlag, "")
 	tctx, tcancel := context.WithTimeout(context.Background(), defaultAPITimeout)
@@ -271,14 +271,23 @@ func (d *Discovery) refresh() (tg *targetgroup.Group, err error) {
 		Source: d.VSphereServer,
 	}
 
+
 	for _, vm := range vms {
+		address := vm.Summary.Guest.IpAddress
+		if len(address) < 1 {
+			level.Warn(d.logger).Log("msg", "No address for VM", "node", vm.Summary.Config.Name)
+			continue
+		}
+
 		tagIDs, err := tagsclient.ListAttachedTags(ctx, vm.ManagedEntity.Reference().Value,"VirtualMachine" )
 		if err != nil {
 			level.Error(d.logger).Log("msg", "Failed to get attached tags", "err", err, "node", vm.Summary.Config.Name)
 			continue
 		}
+
 		labels := model.LabelSet{
 			vSphereLabel + "hostname": model.LabelValue(vm.Summary.Config.Name),
+			model.LabelName(model.AddressLabel): model.LabelValue(address),
 		}
 
 		for _, item := range tagIDs {
@@ -290,10 +299,11 @@ func (d *Discovery) refresh() (tg *targetgroup.Group, err error) {
 			tagName := strutil.SanitizeLabelName(vmtag.Name)
 			if strings.HasPrefix(tagName, "__meta_") {
 				labels[model.LabelName(tagName)] = model.LabelValue(vmtag.Description)
-				labels[model.LabelName(model.AddressLabel)] = model.LabelValue(vm.Summary.Guest.IpAddress)
 
 			}
+
 		}
+
 		tg.Targets = append(tg.Targets, labels)
 	}
 
