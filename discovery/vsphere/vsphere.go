@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"time"
 	"context"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/common/model"
 	yaml_util "github.com/prometheus/prometheus/util/yaml"
+
 )
 
 //TODO Remove hardcoded value
@@ -42,6 +44,7 @@ type Discovery struct {
 	interval   time.Duration
 	Password      string
 	User	string
+	port int
 	InsecureFlag  bool
 	Debug         bool
 	DebugPath     string
@@ -53,6 +56,8 @@ type SDConfig struct {
 	Password      string	`yaml:"password"`
 	User	string			`yaml:"auth_user"`
 	InsecureFlag  bool			`yaml:"allow_insecure_ssl"`
+	Port            int                `yaml:"port"`
+	RefreshInterval model.Duration     `yaml:"refresh_interval,omitempty"`
 	Debug         bool			`yaml:"debug,omitempty"`
 	DebugPath     string		`yaml:"debug_outpath,omitempty"`
 	DebugPathRun  string	`yaml:"debug_runpath,omitempty"`
@@ -73,8 +78,8 @@ func NewDiscovery(conf *SDConfig, logger log.Logger) *Discovery {
 		User: conf.User,
 		Password: conf.Password,
 		InsecureFlag: conf.InsecureFlag,
-		//TODO remove hardcoded value
-		interval: 30 * time.Second,
+		interval: time.Duration(conf.RefreshInterval),
+		port: conf.Port,
 		logger: logger,
 	}
 
@@ -272,11 +277,13 @@ func (d *Discovery) refresh() (tg *targetgroup.Group, err error) {
 
 
 	for _, vm := range vms {
-		address := vm.Summary.Guest.IpAddress
-		if len(address) < 1 {
+		ipaddress := vm.Summary.Guest.IpAddress
+		if len(ipaddress) < 1 {
 			level.Warn(d.logger).Log("msg", "No address for VM", "node", vm.Summary.Config.Name)
 			continue
 		}
+
+		address := net.JoinHostPort(ipaddress, fmt.Sprintf("%d", d.port))
 
 		tagIDs, err := tagsclient.ListAttachedTags(ctx, vm.ManagedEntity.Reference().Value,"VirtualMachine" )
 		if err != nil {
