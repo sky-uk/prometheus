@@ -227,17 +227,29 @@ func (d *Discovery) isEligibleTagEndpoint() (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("Failed to parse vSphere version: %s", err)
 	}
+
+	versionError := fmt.Errorf("Current version %d.%d.%d %d is older than required %d.%d.%d %d", version.Major, version.Minor, version.Patch, version.Build, tagsMinVersion.Major, tagsMinVersion.Minor, tagsMinVersion.Patch, tagsMinVersion.Build)
+	//level.Error(d.logger).Log("msg", "version check", err, versionError)
 	if version.Major < tagsMinVersion.Major {
 		return false, fmt.Errorf("Current major version: %d is older than minimum required: %d", version.Major, tagsMinVersion.Major)
+	}
+	if version.Major > tagsMinVersion.Major {
+		return true, nil
 	}
 	if version.Minor > tagsMinVersion.Minor {
 		return true, nil
 	}
+	if version.Minor < tagsMinVersion.Minor {
+		return false, versionError
+	}
 	if version.Patch > tagsMinVersion.Patch {
 		return true, nil
 	}
+	if version.Patch < tagsMinVersion.Patch {
+		return false, versionError
+	}
 	if version.Build < tagsMinVersion.Build {
-		return false, fmt.Errorf("Current version %d.%d.%d %d is older than required %d.%d.%d %d", version.Major, version.Minor, version.Patch, version.Build, tagsMinVersion.Major, tagsMinVersion.Minor, tagsMinVersion.Patch, tagsMinVersion.Build)
+		return false, versionError
 	}
 	return true, nil
 }
@@ -346,25 +358,31 @@ func (d *Discovery) refresh() (tg *targetgroup.Group, err error) {
 		return nil, err
 	}
 
-	//Setup govmomi CIS client to get tags
-	c, err := d.Client()
-	if err != nil {
-		return nil, err
-	}
-	tagsclient, err := c.TagsClient()
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), defaultAPITimeout)
 	defer cancel()
 
 	tg = &targetgroup.Group{
 		Source: d.VSphereServer,
 	}
+
 	//Do we have support for tags
 	tagsAvailable, err := d.isEligibleTagEndpoint()
 	if err != nil {
 		level.Warn(d.logger).Log("msg", "vSphere tags not supported", "err", err)
+	}
+
+	var tagsclient *tags.RestClient
+	if tagsAvailable {
+		//Setup govmomi CIS client to get tags
+		c, err := d.Client()
+		if err != nil {
+			return nil, err
+		}
+
+		tagsclient, err = c.TagsClient()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, vm := range vms {
